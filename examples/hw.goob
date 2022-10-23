@@ -1,0 +1,9 @@
+SET hello_message "Hello";
+SET world_message "World";
+SET hello_world hello_message + ", " + world_message;
+
+SAY hello_world;
+
+![
+    This is a comment
+]
