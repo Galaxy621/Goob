@@ -1,9 +1,32 @@
 SET hello_message "Hello";
 SET world_message "World";
 SET hello_world hello_message + ", " + world_message;
+SET test ["Apple", "Banana"];
+SAY test[1]; ! Outputs 'Banana'
+
+CONFIG index_at_one 1;
+SAY test[1]; ! Outputs 'Apple'
+
+SET test2 "This is a \"Test\"";
 
 SAY hello_world;
 
 ![
     This is a comment
 ]
+
+![
+    case '\'':
+        string_cache += '\'';
+        break;
+
+    case '"':
+        string_cache += '"';
+        break;
+
+    case '?':
+        string_cache += '?';
+        break;
+
+]
+                    

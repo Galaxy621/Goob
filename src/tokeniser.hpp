@@ -28,6 +28,7 @@ namespace Goob {
         void increment();
         void decrement();
         void clear_cache();
+        void pop_cache();
 
         std::string pull_cache(bool clear_cache);
         std::string get_input() const;

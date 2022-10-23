@@ -10,7 +10,7 @@ std::vector<char> Goob::Operators = {
     '{', '}',
     '[', ']',
     '"', '"',
-    '!'
+    '!', ','
 };
 
 // All arithmetic operators
@@ -73,6 +73,8 @@ void Goob::Input::increment() { m_Pos++; }
 void Goob::Input::decrement() { m_Pos--; }
 // Clear the Input cache
 void Goob::Input::clear_cache() { m_Cache = ""; }
+// Clears the last character in cache
+void Goob::Input::pop_cache() { m_Cache.pop_back(); }
 
 // Get the original program input
 std::string Goob::Input::get_input() const { return m_Input; }
@@ -105,43 +107,124 @@ std::ostream& operator<<(std::ostream& stream, const Goob::Token& token) {
 
 // Split the program into it's constituant tokens
 Goob::Tokeniser::Tokeniser(std::string program) {
-    // First we tokenise strings and comments
-    //  This is done by checking whether we run into an ! or " first
-    //  Then we continue across the line
-    // Next we split the program via its semi-colons, and nuke multiline comments
-    // Finally we Tokenise the rest
+    // 1) Deal with comments
+    // 2) Tokenise!
+
+    bool inlineComment = false;
+    bool multilineComment = false;
+    bool shouldBeString = false;
 
     std::string next;
-    
-    bool multilineComment = false;
 
-    bool isEscaping = false;
+    Input commentPass = Input(program, false);
+
+    while (commentPass.has_next_char()) {
+        char current = commentPass.get_char();
+
+        switch (current) {
+            case '"':
+                if (inlineComment || multilineComment)
+                    break;
+                
+                if (commentPass.review_char() == '\\')
+                    break;
+                
+                shouldBeString = !shouldBeString;
+                break;
+            
+            case '!':
+                if (shouldBeString)
+                    break;
+                
+                if (commentPass.peek_char() == '[')
+                    if (!inlineComment)
+                        multilineComment = true;
+                else
+                    inlineComment = true;
+                
+                break;
+
+            case ']':
+                if (multilineComment) {
+                    multilineComment = false;
+                    commentPass.increment();
+                    continue;
+                }
+                break;
+
+            case '\n':
+                inlineComment = false;
+                break;
+
+
+            default:
+                break;
+        }
+
+        if (!multilineComment && !inlineComment)
+            next += current;
+        
+        commentPass.increment();
+    }
+
+    
     bool isString = false;
-    bool isComment = false;
 
     std::string string_cache = "";
+    std::cout << next;
 
-    Input cInput = Input(program, true);
+    Input cInput = Input(next, true);
     while (cInput.has_next_char()) {
         char current = cInput.get_char();
-
-        if (isComment) {
-            if (current == ']')
-                isComment = false;
-
-            // std::cout << current;
-
-            cInput.increment();
-            continue;
-        }
+        // std::cout << current;
 
 
         if (isString) {
-            if (current == '"') {
+            if (current == '"' && commentPass.review_char() != '\\') {
                 isString = false;
                 Token cur_string = Token("STRING", string_cache);
                 tokens.push_back(cur_string);
                 cInput.clear_cache();
+            } else if (current == '\\') { // Handle escape characters
+                switch (cInput.peek_char()) {
+                    case 'a':
+                        string_cache += '\a';
+                        break;
+
+                    case 'b':
+                        string_cache += '\b';
+                        break;
+
+                    case 'f':
+                        string_cache += '\f';
+                        break;
+                    
+                    case 'n':
+                        string_cache += '\n';
+                        break;
+                    
+                    case 'r':
+                        string_cache += '\r';
+                        break;
+
+                    case 't':
+                        string_cache += '\t';
+                        break;
+                    
+                    case 'v':
+                        string_cache += '\v';
+                        break;
+
+                    case '0':
+                        string_cache += '\0';
+                        break;
+
+                    default:
+                        string_cache += cInput.peek_char();
+                        break;
+                }    
+                
+                cInput.increment();
             } else {
                 string_cache += current;
             }
@@ -160,6 +243,7 @@ Goob::Tokeniser::Tokeniser(std::string program) {
 
                     case '"':
                         cInput.clear_cache();
+                        string_cache = "";
                         isString = true;
                         break;
                     
@@ -171,7 +255,7 @@ Goob::Tokeniser::Tokeniser(std::string program) {
             } else if (is_arithmetic(current)) {
                 Token op = Token("ARITHMETIC", std::string(1, current));
                 tokens.push_back(op);
-                break;
+                cInput.clear_cache();
             }
         }
 
